@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roulette DJ Set 2</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle, #111, #000);
+    color: white;
+}
+
+/* HEADER */
+#top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+}
+
+#logo img { height: 130px; }
+#dj img { height: 100px; }
+
+h1 {
+    text-align: center;
+    flex: 1;
+}
+
+/* CONTAINER */
+.container {
+    text-align: center;
+    padding: 20px;
+}
+
+/* ROUE */
+canvas {
+    display: block;
+    margin: 20px auto;
+}
+
+#pointer {
+    width: 6px;
+    height: 60px;
+    background: red;
+    margin: -40px auto 0;
+    transform: rotate(180deg);
+}
+
+/* RESULT */
+#currentWord {
+    font-size: 28px;
+    margin: 20px;
+    color: #00d4ff;
+    font-weight: bold;
+}
+
+/* BUTTONS */
+#controls {
+    margin: 20px;
+}
+
+button {
+    background: #FFD700;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #e6c200;
+}
+
+/* HISTO */
+#historique {
+    max-width: 400px;
+    margin: 30px auto;
+    padding: 15px;
+    background: #111;
+    border: 1px solid #FFD700;
+    border-radius: 10px;
+}
+
+#historique li {
+    padding: 5px 0;
+    border-bottom: 1px solid #333;
+}
+</style>
+</head>
+
+<body>
+
+<div id="top">
+    <div id="logo"><img src="logo-dpdj.png"></div>
+    <h1>🎧 Roulette DJ Set 2</h1>
+    <div id="dj"><img src="djset.jpg"></div>
+</div>
+
+<div class="container">
+
+    <canvas id="wheel"></canvas>
+    <div id="pointer"></div>
+
+    <div id="currentWord"></div>
+
+    <div id="controls">
+        <button onclick="spin()">🎡 Tourner</button>
+        <button onclick="launch()">🚀 Lancer</button>
+        <button onclick="toggleSound()">🔊 Son</button>
+    </div>
+
+    <div id="historique">
+        <h3>Historique</h3>
+        <ul id="list"></ul>
+    </div>
+
+</div>
+
+<audio id="spinSound" src="spin.mp3"></audio>
+
+<!-- JS DATA -->
+<script src="data.js"></script>
+
+<script>
+
+const DUREE = 3000;
+
+let historique = [];
+let angle = 0;
+let spinning = false;
+let result = "";
+let soundOn = true;
+
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+    let size = Math.min(window.innerWidth * 0.6, 400);
+    canvas.width = size;
+    canvas.height = size;
+}
+resize();
+window.onresize = resize;
+
+// easing
+function easeOut(t) {
+    return 1 - Math.pow(1 - t, 3);
+}
+
+// draw
+function draw() {
+    let r = canvas.width / 2;
+    let arc = 2 * Math.PI / mots.length;
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    for (let i=0; i<mots.length; i++) {
+        ctx.beginPath();
+        ctx.fillStyle = i%2 ? "#222" : "#FFD700";
+        ctx.moveTo(r,r);
+        ctx.arc(r,r,r, i*arc + angle, (i+1)*arc + angle);
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(r,r);
+        ctx.rotate(i*arc + arc/2 + angle);
+
+        ctx.textAlign = "right";
+        ctx.fillStyle = i%2 ? "white" : "black";
+        ctx.font = "14px Arial";
+        ctx.fillText(mots[i], r-10, 5);
+        ctx.restore();
+    }
+}
+
+draw();
+
+function getIndex() {
+    const arc = 2 * Math.PI / mots.length;
+    let adjusted = (-angle + Math.PI/2);
+    let normalized = (adjusted % (2*Math.PI) + 2*Math.PI) % (2*Math.PI);
+    return Math.floor(normalized / arc);
+}
+
+let lastIndex = -1;
+
+function spin() {
+    if (spinning || mots.length === 0) return;
+
+    spinning = true;
+    let start = performance.now();
+    let startAngle = angle;
+    let endAngle = angle + (Math.random()*2 + 4) * 2*Math.PI;
+
+    function anim(t) {
+        let p = Math.min((t - start)/DUREE, 1);
+        let e = easeOut(p);
+
+        angle = startAngle + (endAngle - startAngle) * e;
+        draw();
+
+        let index = getIndex();
+        currentWord.textContent = mots[index];
+
+        if (p < 1) requestAnimationFrame(anim);
+        else finish();
+    }
+
+    requestAnimationFrame(anim);
+}
+
+function finish() {
+    spinning = false;
+
+    let index = getIndex();
+    result = mots[index];
+
+    currentWord.textContent = "🎯 " + result;
+
+    historique.push(result);
+    updateHistory();
+
+    mots.splice(index,1);
+}
+
+function updateHistory() {
+    list.innerHTML = "";
+    historique.forEach(m => {
+        let li = document.createElement("li");
+        li.textContent = m;
+        list.appendChild(li);
+    });
+}
+
+function launch() {
+    if (!result) return alert("Tourne la roue !");
+    window.open("https://djset.olemains.com/play/" + result);
+}
+
+function toggleSound() {
+    soundOn = !soundOn;
+}
+
+</script>
+
+</body>
+</html>
